@@ -1,10 +1,23 @@
 import { useState, useCallback } from "react";
-import type { MenuItem, CartItem } from "@/data/mockData";
+
+export interface CartMenuItem {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  is_veg: boolean;
+}
+
+export interface CartItem extends CartMenuItem {
+  quantity: number;
+}
 
 export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addItem = useCallback((item: MenuItem) => {
+  const addItem = useCallback((item: CartMenuItem) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
