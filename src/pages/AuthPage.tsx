@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
@@ -14,22 +15,47 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { user, signIn, signUp } = useAuth();
+
+  const redirectTo = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+
+  // If already signed in, bounce away from /auth
+  useEffect(() => {
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSignup && form.password !== form.confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const { error } = isSignup
+        ? await signUp(form.email, form.password, form.name)
+        : await signIn(form.email, form.password);
+
+      if (error) {
+        toast({
+          title: isSignup ? "Sign-up failed" : "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: isSignup ? "Account created!" : "Welcome back!",
+          description: isSignup ? "You're all set." : undefined,
+        });
+        navigate(redirectTo, { replace: true });
+      }
+    } finally {
       setLoading(false);
-      toast({ title: isSignup ? "Account created!" : "Welcome back!" });
-      navigate("/dashboard");
-    }, 1000);
+    }
   };
 
   return (
