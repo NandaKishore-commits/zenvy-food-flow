@@ -48,12 +48,14 @@ export async function getAll<T extends PublicTable>(
     select = "*",
   } = opts;
 
-  let query = supabase.from(table).select(select, { count: "exact" });
+  // Supabase needs a concrete table name to type the chain; cast internally
+  // and rely on PublicTable to keep the public API safe.
+  let query: any = supabase.from(table as any).select(select, { count: "exact" });
 
   if (filters) {
     for (const [col, val] of Object.entries(filters)) {
       if (val === null) query = query.is(col, null);
-      else query = query.eq(col, val as never);
+      else query = query.eq(col, val);
     }
   }
   if (search?.term) {
@@ -79,8 +81,7 @@ export async function getById<T extends PublicTable>(
   id: string,
   select = "*"
 ): Promise<Row<T> | null> {
-  const { data, error } = await supabase
-    .from(table)
+  const { data, error } = await (supabase.from(table as any) as any)
     .select(select)
     .eq("id", id)
     .maybeSingle();
@@ -95,9 +96,8 @@ export async function createRecord<T extends PublicTable>(
   table: T,
   values: Insert<T>
 ): Promise<Row<T>> {
-  const { data, error } = await supabase
-    .from(table)
-    .insert(values as never)
+  const { data, error } = await (supabase.from(table as any) as any)
+    .insert(values)
     .select()
     .single();
   if (error) {
@@ -112,9 +112,8 @@ export async function updateRecord<T extends PublicTable>(
   id: string,
   values: Update<T>
 ): Promise<Row<T>> {
-  const { data, error } = await supabase
-    .from(table)
-    .update(values as never)
+  const { data, error } = await (supabase.from(table as any) as any)
+    .update(values)
     .eq("id", id)
     .select()
     .single();
@@ -129,7 +128,7 @@ export async function deleteRecord<T extends PublicTable>(
   table: T,
   id: string
 ): Promise<void> {
-  const { error } = await supabase.from(table).delete().eq("id", id);
+  const { error } = await (supabase.from(table as any) as any).delete().eq("id", id);
   if (error) {
     logError(`delete:${table}`, error);
     throw error;
