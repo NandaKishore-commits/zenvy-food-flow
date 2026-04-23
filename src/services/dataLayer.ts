@@ -30,9 +30,17 @@ export interface QueryOptions {
 }
 
 function logError(scope: string, error: unknown) {
-  // Centralised logging hook — swap out for Sentry, etc.
-  // eslint-disable-next-line no-console
-  console.error(`[dataLayer:${scope}]`, error);
+  // Avoid leaking Postgres / Supabase internals (table names, columns, SQL state)
+  // to the browser console. Only the high-level scope is surfaced; full details
+  // would be sent to a server-side log sink (Sentry, Datadog, edge function) in
+  // production.
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.error(`[dataLayer:${scope}]`, error);
+  } else {
+    // eslint-disable-next-line no-console
+    console.error(`[dataLayer] An unexpected error occurred (${scope})`);
+  }
 }
 
 export async function getAll<T extends PublicTable>(
@@ -173,41 +181,34 @@ export interface PlaceOrderInput {
   addressId?: string | null;
   items: Array<{
     menu_item_id: string;
-    name_snapshot: string;
-    price_snapshot: number;
     quantity: number;
   }>;
-  deliveryFee?: number;
   notes?: string;
 }
 
+/**
+ * Place an order through the secure `place-order` edge function.
+ * The client only sends `{ menu_item_id, quantity }` — prices, subtotal, total
+ * and delivery fee are all computed server-side against the live menu so they
+ * cannot be tampered with from the browser.
+ */
 export async function placeOrder(input: PlaceOrderInput) {
-  const subtotal = input.items.reduce(
-    (sum, i) => sum + Number(i.price_snapshot) * i.quantity,
-    0
-  );
-  const delivery_fee = input.deliveryFee ?? 0;
-  const total = subtotal + delivery_fee;
-
-  const order = await createRecord("orders", {
-    user_id: input.userId,
-    restaurant_id: input.restaurantId,
-    address_id: input.addressId ?? null,
-    subtotal,
-    delivery_fee,
-    total,
-    notes: input.notes,
+  const { data, error } = await supabase.functions.invoke("place-order", {
+    body: {
+      restaurant_id: input.restaurantId,
+      address_id: input.addressId ?? null,
+      notes: input.notes,
+      items: input.items.map((i) => ({
+        menu_item_id: i.menu_item_id,
+        quantity: i.quantity,
+      })),
+    },
   });
-
-  const lineItems = input.items.map((i) => ({ ...i, order_id: order.id }));
-  const { error } = await supabase.from("order_items").insert(lineItems);
   if (error) {
-    logError("placeOrder:items", error);
-    // Best-effort rollback
-    await deleteRecord("orders", order.id);
-    throw error;
+    logError("placeOrder", error);
+    throw new Error("Could not place order");
   }
-  return order;
+  return data as { order_id: string; subtotal: number; total: number };
 }
 
 export async function listMyOrders(userId: string) {
