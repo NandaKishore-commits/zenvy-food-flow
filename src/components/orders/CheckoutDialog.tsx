@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CreditCard, Smartphone, Banknote, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import {
+  CreditCard,
+  Smartphone,
+  Banknote,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +19,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { placeOrder } from "@/services/dataLayer";
-import { initiatePayment, type PaymentMethod } from "@/services/payments";
+import {
+  initiatePayment,
+  type PaymentDetails,
+  type PaymentMethod,
+} from "@/services/payments";
 import { useNavigate } from "react-router-dom";
+import { UpiPaymentForm } from "@/components/payments/UpiPaymentForm";
+import { CardPaymentForm } from "@/components/payments/CardPaymentForm";
 
 export interface CheckoutCartItem {
   id: string;
@@ -21,13 +34,18 @@ export interface CheckoutCartItem {
   restaurant_id: string;
 }
 
-const METHODS: { id: PaymentMethod; label: string; icon: typeof CreditCard; description: string }[] = [
+const METHODS: {
+  id: PaymentMethod;
+  label: string;
+  icon: typeof CreditCard;
+  description: string;
+}[] = [
   { id: "upi", label: "UPI", icon: Smartphone, description: "Pay instantly with any UPI app" },
   { id: "card", label: "Card", icon: CreditCard, description: "Credit / Debit card" },
   { id: "cod", label: "Cash on Delivery", icon: Banknote, description: "Pay in cash when it arrives" },
 ];
 
-type Step = "method" | "processing" | "success" | "failed";
+type Step = "method" | "details" | "processing" | "success" | "failed";
 
 interface Props {
   open: boolean;
@@ -57,7 +75,7 @@ export function CheckoutDialog({ open, onOpenChange, items, total, onComplete }:
     if (!v) setTimeout(reset, 300);
   };
 
-  const handlePay = async () => {
+  const runPayment = async (details: PaymentDetails) => {
     if (!user || items.length === 0) return;
     setStep("processing");
     try {
@@ -73,7 +91,7 @@ export function CheckoutDialog({ open, onOpenChange, items, total, onComplete }:
         orderId: placed.order_id,
         userId: user.id,
         amount: placed.total,
-        method,
+        details,
       });
 
       if (success) {
@@ -96,7 +114,7 @@ export function CheckoutDialog({ open, onOpenChange, items, total, onComplete }:
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         {step === "method" && (
           <>
             <DialogHeader>
@@ -132,12 +150,62 @@ export function CheckoutDialog({ open, onOpenChange, items, total, onComplete }:
                 );
               })}
             </div>
-            <Button size="lg" onClick={handlePay} className="w-full">
-              {method === "cod" ? `Confirm COD · ₹${total.toFixed(2)}` : `Pay ₹${total.toFixed(2)}`}
+            <Button
+              size="lg"
+              onClick={() => {
+                if (method === "cod") {
+                  void runPayment({ method: "cod" });
+                } else {
+                  setStep("details");
+                }
+              }}
+              className="w-full"
+            >
+              {method === "cod" ? `Confirm COD · ₹${total.toFixed(2)}` : "Continue"}
             </Button>
             <p className="text-[10px] text-center text-muted-foreground">
               Demo gateway · no real money is charged
             </p>
+          </>
+        )}
+
+        {step === "details" && method === "upi" && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Pay with UPI</DialogTitle>
+              <DialogDescription>Total payable: ₹{total.toFixed(2)}</DialogDescription>
+            </DialogHeader>
+            <UpiPaymentForm
+              amount={total}
+              onSubmit={(d) => runPayment({ method: "upi", upiId: d.upiId })}
+            />
+            <Button variant="ghost" size="sm" onClick={() => setStep("method")}>
+              ← Choose a different method
+            </Button>
+          </>
+        )}
+
+        {step === "details" && method === "card" && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Pay with Card</DialogTitle>
+              <DialogDescription>Total payable: ₹{total.toFixed(2)}</DialogDescription>
+            </DialogHeader>
+            <CardPaymentForm
+              amount={total}
+              onSubmit={(d) =>
+                runPayment({
+                  method: "card",
+                  number: d.number,
+                  holder: d.holder,
+                  expiry: d.expiry,
+                  cvv: d.cvv,
+                })
+              }
+            />
+            <Button variant="ghost" size="sm" onClick={() => setStep("method")}>
+              ← Choose a different method
+            </Button>
           </>
         )}
 

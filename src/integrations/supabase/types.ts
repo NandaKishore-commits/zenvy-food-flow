@@ -398,6 +398,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_my_order: {
+        Args: { _order_id: string }
+        Returns: {
+          address_id: string | null
+          created_at: string
+          delivery_fee: number
+          id: string
+          notes: string | null
+          restaurant_id: string
+          status: Database["public"]["Enums"]["order_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -416,7 +438,7 @@ export type Database = {
         | "delivered"
         | "cancelled"
       payment_method: "upi" | "card" | "cod"
-      payment_status: "unpaid" | "paid" | "failed"
+      payment_status: "unpaid" | "paid" | "failed" | "refunded" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -554,7 +576,7 @@ export const Constants = {
         "cancelled",
       ],
       payment_method: ["upi", "card", "cod"],
-      payment_status: ["unpaid", "paid", "failed"],
+      payment_status: ["unpaid", "paid", "failed", "refunded", "cancelled"],
     },
   },
 } as const

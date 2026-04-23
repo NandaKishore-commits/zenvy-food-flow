@@ -43,7 +43,13 @@ Deno.serve(async (req) => {
   if (userErr || !userData?.user) return bad(401, "Invalid session");
   const userId = userData.user.id;
 
-  let body: { action?: string; payment_id?: string; order_id?: string; new_status?: string };
+  let body: {
+    action?: string;
+    payment_id?: string;
+    order_id?: string;
+    new_status?: string;
+    client_hint?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -76,7 +82,14 @@ Deno.serve(async (req) => {
       : Math.random() < 0.9;
 
     const newStatus = succeeds ? "paid" : "failed";
-    const providerRef = `sim_${crypto.randomUUID().slice(0, 12)}`;
+    // Trust nothing the client said about itself: clamp the hint length and
+    // strip control chars before persisting it next to the simulator ref.
+    const safeHint = typeof body.client_hint === "string"
+      ? body.client_hint.replace(/[^\x20-\x7E]/g, "").slice(0, 40)
+      : "";
+    const providerRef = `sim_${crypto.randomUUID().slice(0, 12)}${
+      safeHint ? `|${safeHint}` : ""
+    }`;
 
     const { data: updated, error: uErr } = await admin
       .from("payments")
