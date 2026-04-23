@@ -237,6 +237,50 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          order_id: string
+          provider_ref: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          order_id: string
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          order_id?: string
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -329,6 +373,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_order_status: {
+        Args: {
+          _new_status: Database["public"]["Enums"]["order_status"]
+          _order_id: string
+        }
+        Returns: {
+          address_id: string | null
+          created_at: string
+          delivery_fee: number
+          id: string
+          notes: string | null
+          restaurant_id: string
+          status: Database["public"]["Enums"]["order_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -341,10 +410,13 @@ export type Database = {
       app_role: "admin" | "user"
       order_status:
         | "placed"
+        | "confirmed"
         | "preparing"
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
+      payment_method: "upi" | "card" | "cod"
+      payment_status: "unpaid" | "paid" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -475,11 +547,14 @@ export const Constants = {
       app_role: ["admin", "user"],
       order_status: [
         "placed",
+        "confirmed",
         "preparing",
         "out_for_delivery",
         "delivered",
         "cancelled",
       ],
+      payment_method: ["upi", "card", "cod"],
+      payment_status: ["unpaid", "paid", "failed"],
     },
   },
 } as const
