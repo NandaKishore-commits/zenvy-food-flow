@@ -121,8 +121,6 @@ export default function Dashboard() {
         restaurantId,
         items: cartItems.map((c) => ({
           menu_item_id: c.id,
-          name_snapshot: c.name,
-          price_snapshot: c.price,
           quantity: c.quantity,
         })),
       });
