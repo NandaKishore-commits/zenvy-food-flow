@@ -157,8 +157,8 @@ export function CheckoutDialog({ open, onOpenChange, items, total, onComplete }:
             animate={{ scale: 1, opacity: 1 }}
             className="py-8 flex flex-col items-center gap-4 text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-emerald-500/15 grid place-items-center">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            <div className="w-16 h-16 rounded-full bg-accent/15 grid place-items-center">
+              <CheckCircle2 className="w-10 h-10 text-accent" />
             </div>
             <div>
               <h3 className="font-heading text-xl font-bold">Order confirmed</h3>
