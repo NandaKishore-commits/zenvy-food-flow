@@ -86,7 +86,12 @@ export function CardPaymentForm({ amount, loading, onSubmit }: Props) {
       return;
     }
     setErrors({});
-    onSubmit(result.data);
+    onSubmit({
+      number: result.data.number,
+      holder: result.data.holder,
+      expiry: result.data.expiry,
+      cvv: result.data.cvv,
+    });
   };
 
   return (
