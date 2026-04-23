@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Star, Clock, ShoppingCart, Plus, Minus, X, ArrowLeft, Leaf, LogOut, Heart } from "lucide-react";
+import { Search, Star, Clock, ShoppingCart, Plus, Minus, X, ArrowLeft, Leaf, LogOut, Heart, Receipt } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   listRestaurants,
   getRestaurantWithMenu,
-  placeOrder,
   toggleFavorite,
   getAll,
   type Row,
 } from "@/services/dataLayer";
+import { CheckoutDialog } from "@/components/orders/CheckoutDialog";
 
 type Restaurant = Row<"restaurants">;
 type MenuItem = Row<"menu_items">;
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const [menuLoading, setMenuLoading] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [placing, setPlacing] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   // ---- Fetch restaurants (with debounced search/category filter) -----------
   useEffect(() => {
@@ -111,27 +111,10 @@ export default function Dashboard() {
     }
   };
 
-  const handlePlaceOrder = async () => {
-    if (!user || cartItems.length === 0) return;
-    const restaurantId = cartItems[0].restaurant_id;
-    setPlacing(true);
-    try {
-      await placeOrder({
-        userId: user.id,
-        restaurantId,
-        items: cartItems.map((c) => ({
-          menu_item_id: c.id,
-          quantity: c.quantity,
-        })),
-      });
-      toast({ title: "Order placed! 🎉", description: "Your food is being prepared." });
-      clearCart();
-      setCartOpen(false);
-    } catch (e: any) {
-      toast({ title: "Failed to place order", description: e?.message, variant: "destructive" });
-    } finally {
-      setPlacing(false);
-    }
+  const handleCheckout = () => {
+    if (cartItems.length === 0) return;
+    setCartOpen(false);
+    setCheckoutOpen(true);
   };
 
   const handleSignOut = async () => {
@@ -146,6 +129,11 @@ export default function Dashboard() {
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="font-heading text-2xl font-bold text-gradient">Zenvy</Link>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="icon" title="My orders">
+              <Link to="/orders">
+                <Receipt className="w-5 h-5" />
+              </Link>
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
               <LogOut className="w-5 h-5" />
             </Button>
@@ -375,8 +363,8 @@ export default function Dashboard() {
                     <span>Total</span>
                     <span>₹{total}</span>
                   </div>
-                  <Button className="w-full" size="lg" onClick={handlePlaceOrder} disabled={placing}>
-                    {placing ? "Placing…" : "Place Order"}
+                  <Button className="w-full" size="lg" onClick={handleCheckout}>
+                    Checkout · ₹{total}
                   </Button>
                 </div>
               )}
@@ -384,6 +372,14 @@ export default function Dashboard() {
           </>
         )}
       </AnimatePresence>
+
+      <CheckoutDialog
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        items={cartItems.map((c) => ({ id: c.id, quantity: c.quantity, restaurant_id: c.restaurant_id }))}
+        total={total}
+        onComplete={() => clearCart()}
+      />
     </div>
   );
 }
