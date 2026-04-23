@@ -18,11 +18,27 @@ export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 export type PaymentStatus = Database["public"]["Enums"]["payment_status"];
 export type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
 
+/**
+ * Method-specific details collected from the user. We deliberately keep
+ * these client-side only — sensitive fields (card number, CVV) are never
+ * persisted. Only a non-sensitive summary is stored as `provider_ref`.
+ */
+export type PaymentDetails =
+  | { method: "upi"; upiId: string }
+  | {
+      method: "card";
+      number: string;
+      holder: string;
+      expiry: string;
+      cvv: string;
+    }
+  | { method: "cod" };
+
 export interface InitiatePaymentInput {
   orderId: string;
   userId: string;
   amount: number;
-  method: PaymentMethod;
+  details: PaymentDetails;
 }
 
 export interface PaymentResult {
@@ -41,6 +57,21 @@ function logError(scope: string, error: unknown) {
 }
 
 /**
+ * Build a short, safe label for the payment record.
+ * - UPI: store the UPI id (it's not secret).
+ * - Card: store only the last-4 + holder initial (never the full PAN/CVV).
+ * - COD: no client hint needed.
+ */
+function buildClientHint(details: PaymentDetails): string | null {
+  if (details.method === "upi") return `upi:${details.upiId}`;
+  if (details.method === "card") {
+    const last4 = details.number.slice(-4);
+    return `card:••••${last4}`;
+  }
+  return null;
+}
+
+/**
  * Simulated payment flow:
  *   1. Insert payment row with status='unpaid' (RLS enforces ownership).
  *   2. Call `update-order-status` edge function which, for COD, marks paid
@@ -50,7 +81,11 @@ function logError(scope: string, error: unknown) {
 export async function initiatePayment(
   input: InitiatePaymentInput,
 ): Promise<PaymentResult> {
-  const { orderId, userId, amount, method } = input;
+  const { orderId, userId, amount, details } = input;
+  const method = details.method;
+
+  // Simulate the upstream gateway latency so the UI spinner feels real.
+  await new Promise((r) => setTimeout(r, 600));
 
   const { data: payment, error: insertErr } = await supabase
     .from("payments")
@@ -70,7 +105,11 @@ export async function initiatePayment(
   }
 
   const { data, error } = await supabase.functions.invoke("update-order-status", {
-    body: { action: "settle_payment", payment_id: payment.id },
+    body: {
+      action: "settle_payment",
+      payment_id: payment.id,
+      client_hint: buildClientHint(details),
+    },
   });
   if (error) {
     logError("settle", error);

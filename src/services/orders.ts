@@ -68,14 +68,21 @@ export async function advanceOrderStatus(orderId: string, newStatus: OrderStatus
   return data?.order as OrderRow;
 }
 
-/** User-facing: cancel own order while still in placed/confirmed/preparing. */
-export async function cancelMyOrder(orderId: string) {
-  const { error } = await supabase
-    .from("orders")
-    .update({ status: "cancelled" })
-    .eq("id", orderId);
+/**
+ * User-facing cancel: allowed only while the order is 'placed' or 'confirmed'.
+ * Atomically cancels the order AND reconciles the linked payment
+ * (paid -> refunded, unpaid -> cancelled) via a SECURITY DEFINER RPC.
+ */
+export async function cancelMyOrder(orderId: string): Promise<OrderRow> {
+  const { data, error } = await supabase.rpc("cancel_my_order", {
+    _order_id: orderId,
+  });
   if (error) {
     logError("cancel", error);
-    throw new Error("Could not cancel order");
+    const msg = /no longer be cancelled/i.test(error.message)
+      ? "This order can no longer be cancelled."
+      : "Could not cancel order";
+    throw new Error(msg);
   }
+  return data as OrderRow;
 }
