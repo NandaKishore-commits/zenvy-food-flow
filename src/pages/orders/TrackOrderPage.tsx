@@ -3,7 +3,7 @@ import { ArrowLeft, MapPin, Wifi } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useOrderRealtime } from "@/hooks/useOrderRealtime";
 import { OrderStepper } from "@/components/orders/OrderStepper";
-import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { OrderStatusBadge, PaymentStatusBadge } from "@/components/orders/OrderStatusBadge";
 import { CancelOrderButton } from "@/components/orders/CancelOrderButton";
 import { Button } from "@/components/ui/button";
 import { getPaymentForOrder, type PaymentRow } from "@/services/payments";
@@ -97,11 +97,9 @@ export default function TrackOrderPage() {
                   <span>Total</span><span>₹{Number(order.total).toFixed(2)}</span>
                 </div>
                 {payment && (
-                  <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                    <span>Payment ({payment.method.toUpperCase()})</span>
-                    <span className={payment.status === "paid" ? "text-accent" : payment.status === "failed" ? "text-destructive" : ""}>
-                      {payment.status}
-                    </span>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground pt-2">
+                    <span>Payment · {payment.method.toUpperCase()}</span>
+                    <PaymentStatusBadge status={payment.status} />
                   </div>
                 )}
               </div>
