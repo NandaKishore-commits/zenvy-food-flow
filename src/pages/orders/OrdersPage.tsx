@@ -59,44 +59,62 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map((o, i) => (
-              <motion.button
-                key={o.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => navigate(`/orders/${o.id}`)}
-                className="w-full text-left bg-card rounded-xl p-4 shadow-card hover:shadow-hover transition-shadow border border-border"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-                    {o.restaurants?.image_url ? (
-                      <img src={o.restaurants.image_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <Receipt className="w-6 h-6 text-muted-foreground m-auto mt-4" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{o.restaurants?.name ?? "Order"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(o.created_at).toLocaleString()}
-                        </p>
+            {orders.map((o, i) => {
+              const canCancel = o.status === "placed" || o.status === "confirmed";
+              return (
+                <motion.div
+                  key={o.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="bg-card rounded-xl p-4 shadow-card hover:shadow-hover transition-shadow border border-border"
+                >
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/orders/${o.id}`)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                        {o.restaurants?.image_url ? (
+                          <img src={o.restaurants.image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Receipt className="w-6 h-6 text-muted-foreground m-auto mt-4" />
+                        )}
                       </div>
-                      <OrderStatusBadge status={o.status} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{o.restaurants?.name ?? "Order"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(o.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <OrderStatusBadge status={o.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2 truncate">
+                          {o.order_items.map((it) => `${it.quantity}× ${it.name_snapshot}`).join(", ")}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-muted-foreground">{o.order_items.length} item(s)</span>
+                          <span className="font-heading font-bold">₹{Number(o.total).toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2 truncate">
-                      {o.order_items.map((it) => `${it.quantity}× ${it.name_snapshot}`).join(", ")}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-muted-foreground">{o.order_items.length} item(s)</span>
-                      <span className="font-heading font-bold">₹{Number(o.total).toFixed(2)}</span>
+                  </button>
+                  {canCancel && (
+                    <div className="mt-3 pt-3 border-t border-border flex justify-end">
+                      <CancelOrderButton
+                        orderId={o.id}
+                        status={o.status}
+                        size="sm"
+                        onCancelled={refetch}
+                      />
                     </div>
-                  </div>
-                </div>
-              </motion.button>
-            ))}
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </main>
