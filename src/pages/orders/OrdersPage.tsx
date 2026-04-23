@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Package, Receipt } from "lucide-react";
@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { listMyOrdersWithItems, type OrderWithItems } from "@/services/orders";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { CancelOrderButton } from "@/components/orders/CancelOrderButton";
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     if (!user) return;
     let cancelled = false;
     setLoading(true);
@@ -25,6 +26,10 @@ export default function OrdersPage() {
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [user, toast]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <div className="min-h-screen bg-background">

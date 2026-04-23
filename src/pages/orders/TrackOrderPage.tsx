@@ -1,40 +1,32 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, Wifi } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useOrderRealtime } from "@/hooks/useOrderRealtime";
 import { OrderStepper } from "@/components/orders/OrderStepper";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
+import { CancelOrderButton } from "@/components/orders/CancelOrderButton";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { cancelMyOrder, type OrderStatus } from "@/services/orders";
 import { getPaymentForOrder, type PaymentRow } from "@/services/payments";
-
-const CANCELABLE: OrderStatus[] = ["placed", "confirmed", "preparing"];
 
 export default function TrackOrderPage() {
   const { id } = useParams<{ id: string }>();
   const { order, loading, error } = useOrderRealtime(id);
-  const { toast } = useToast();
   const [payment, setPayment] = useState<PaymentRow | null>(null);
-  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
+  const refetchPayment = useCallback(() => {
     if (!id) return;
     getPaymentForOrder(id).then(setPayment);
   }, [id]);
 
-  const handleCancel = async () => {
-    if (!order) return;
-    setCancelling(true);
-    try {
-      await cancelMyOrder(order.id);
-      toast({ title: "Order cancelled" });
-    } catch (e: any) {
-      toast({ title: "Couldn't cancel", description: e?.message, variant: "destructive" });
-    } finally {
-      setCancelling(false);
-    }
-  };
+  useEffect(() => {
+    refetchPayment();
+  }, [refetchPayment]);
+
+  // When the order status flips to cancelled, the linked payment was just
+  // updated server-side too (paid->refunded / unpaid->cancelled).
+  useEffect(() => {
+    if (order?.status === "cancelled") refetchPayment();
+  }, [order?.status, refetchPayment]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,15 +107,13 @@ export default function TrackOrderPage() {
               </div>
             </div>
 
-            {CANCELABLE.includes(order.status) && (
-              <Button
-                variant="outline"
+            {order.status !== "cancelled" && order.status !== "delivered" && (
+              <CancelOrderButton
+                orderId={order.id}
+                status={order.status}
                 className="w-full"
-                onClick={handleCancel}
-                disabled={cancelling}
-              >
-                {cancelling ? "Cancelling…" : "Cancel order"}
-              </Button>
+                onCancelled={refetchPayment}
+              />
             )}
           </>
         )}
