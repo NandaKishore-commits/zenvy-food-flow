@@ -56,12 +56,16 @@ export default function AdminOrdersPage() {
   }, [user, isAdmin, toast]);
 
   const handleAdvance = async (orderId: string, next: OrderStatus) => {
+    if (busyId) return;
     setBusyId(orderId);
     try {
       await advanceOrderStatus(orderId, next);
       toast({ title: "Status updated" });
     } catch (e: any) {
-      toast({ title: "Update failed", description: e?.message, variant: "destructive" });
+      const msg = /invalid transition/i.test(e?.message ?? "")
+        ? "Order already moved to the next stage."
+        : e?.message;
+      toast({ title: "Update failed", description: msg, variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -111,6 +115,7 @@ export default function AdminOrdersPage() {
           <div className="space-y-3">
             {orders.map((o) => {
               const action = NEXT_STATUS[o.status];
+              const isBusy = busyId === o.id;
               return (
                 <div key={o.id} className="bg-card rounded-xl p-4 shadow-card border border-border">
                   <div className="flex items-start justify-between gap-3">
@@ -131,10 +136,10 @@ export default function AdminOrdersPage() {
                       {action && (
                         <Button
                           size="sm"
-                          disabled={busyId === o.id}
+                          disabled={isBusy || busyId !== null}
                           onClick={() => handleAdvance(o.id, action.next)}
                         >
-                          {busyId === o.id ? "…" : action.label}
+                          {isBusy ? "…" : action.label}
                         </Button>
                       )}
                       <Button asChild size="sm" variant="outline">
