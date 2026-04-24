@@ -128,7 +128,9 @@ Deno.serve(async (req) => {
     });
     if (!isAdmin) return bad(403, "Admin only");
 
-    const { data, error } = await admin.rpc("advance_order_status", {
+    // Call via the user-context client so auth.uid() resolves inside the
+    // SECURITY DEFINER function (it checks has_role(auth.uid(), 'admin')).
+    const { data, error } = await userClient.rpc("advance_order_status", {
       _order_id: body.order_id,
       _new_status: body.new_status,
     });
