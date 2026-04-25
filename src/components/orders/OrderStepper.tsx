@@ -2,12 +2,69 @@ import { Check, Clock, ChefHat, Truck, Package, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { OrderStatus } from "@/services/orders";
 
-const STEPS: { key: OrderStatus; label: string; icon: typeof Check }[] = [
-  { key: "placed", label: "Order Placed", icon: Check },
-  { key: "confirmed", label: "Confirmed", icon: Clock },
-  { key: "preparing", label: "Preparing", icon: ChefHat },
-  { key: "out_for_delivery", label: "Out for Delivery", icon: Truck },
-  { key: "delivered", label: "Delivered", icon: Package },
+type StepConfig = {
+  key: OrderStatus;
+  label: string;
+  icon: typeof Check;
+  // Tailwind classes per state
+  doneBg: string;
+  currentBg: string;
+  currentRing: string;
+  connector: string;
+  currentText: string;
+};
+
+const STEPS: StepConfig[] = [
+  {
+    key: "placed",
+    label: "Order Placed",
+    icon: Check,
+    doneBg: "bg-muted-foreground text-background",
+    currentBg: "bg-muted-foreground text-background",
+    currentRing: "ring-muted-foreground/20",
+    connector: "bg-muted-foreground",
+    currentText: "text-muted-foreground",
+  },
+  {
+    key: "confirmed",
+    label: "Confirmed",
+    icon: Clock,
+    doneBg: "bg-primary text-primary-foreground",
+    currentBg: "bg-primary text-primary-foreground",
+    currentRing: "ring-primary/20",
+    connector: "bg-primary",
+    currentText: "text-primary",
+  },
+  {
+    key: "preparing",
+    label: "Preparing",
+    icon: ChefHat,
+    doneBg: "bg-secondary text-secondary-foreground",
+    currentBg: "bg-secondary text-secondary-foreground",
+    currentRing: "ring-secondary/30",
+    connector: "bg-secondary",
+    currentText: "text-secondary-foreground",
+  },
+  {
+    key: "out_for_delivery",
+    label: "Out for Delivery",
+    icon: Truck,
+    doneBg: "bg-accent text-accent-foreground",
+    currentBg: "bg-accent text-accent-foreground",
+    currentRing: "ring-accent/30",
+    connector: "bg-accent",
+    currentText: "text-accent",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    icon: Package,
+    doneBg: "bg-emerald-500 text-white",
+    currentBg: "bg-emerald-500 text-white",
+    currentRing: "ring-emerald-500/25",
+    connector: "bg-emerald-500",
+    currentText: "text-emerald-600 dark:text-emerald-400",
+  },
 ];
 
 export function OrderStepper({ status }: { status: OrderStatus }) {
@@ -41,9 +98,9 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
                 animate={{ scale: isCurrent ? 1.1 : 1 }}
                 className={`w-10 h-10 rounded-full grid place-items-center transition-colors ${
                   isDone
-                    ? "bg-primary text-primary-foreground"
+                    ? step.doneBg
                     : isCurrent
-                    ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                    ? `${step.currentBg} ring-4 ${step.currentRing}`
                     : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -52,7 +109,7 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
               {i < STEPS.length - 1 && (
                 <div
                   className={`w-0.5 h-10 transition-colors ${
-                    isDone ? "bg-primary" : "bg-muted"
+                    isDone ? step.connector : "bg-muted"
                   }`}
                 />
               )}
@@ -69,7 +126,7 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-sm text-primary mt-0.5"
+                  className={`text-sm mt-0.5 ${step.currentText}`}
                 >
                   In progress…
                 </motion.p>
