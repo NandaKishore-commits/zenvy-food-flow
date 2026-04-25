@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface CartMenuItem {
   id: string;
@@ -14,8 +15,61 @@ export interface CartItem extends CartMenuItem {
   quantity: number;
 }
 
+const STORAGE_PREFIX = "zenvy.cart.";
+const GUEST_KEY = `${STORAGE_PREFIX}guest`;
+
+function readCart(key: string): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function useCart() {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const { user } = useAuth();
+  // Per-user storage key; falls back to a guest cart before login.
+  const storageKey = user ? `${STORAGE_PREFIX}${user.id}` : GUEST_KEY;
+
+  const [items, setItems] = useState<CartItem[]>(() => readCart(storageKey));
+  const lastKeyRef = useRef(storageKey);
+
+  // When the active user changes (login / logout / switch account),
+  // load that user's saved cart so each account keeps its own items.
+  useEffect(() => {
+    if (lastKeyRef.current === storageKey) return;
+    lastKeyRef.current = storageKey;
+    setItems(readCart(storageKey));
+  }, [storageKey]);
+
+  // Persist on every change so a refresh restores the cart.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (items.length === 0) {
+        window.localStorage.removeItem(storageKey);
+      } else {
+        window.localStorage.setItem(storageKey, JSON.stringify(items));
+      }
+    } catch {
+      // Ignore quota / privacy-mode errors — cart will simply not persist.
+    }
+  }, [items, storageKey]);
+
+  // Sync across tabs for the same user.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== storageKey) return;
+      setItems(readCart(storageKey));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [storageKey]);
 
   const addItem = useCallback((item: CartMenuItem) => {
     setItems((prev) => {
