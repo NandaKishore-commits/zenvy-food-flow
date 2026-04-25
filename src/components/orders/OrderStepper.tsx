@@ -81,6 +81,7 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
   }
 
   const currentIndex = STEPS.findIndex((s) => s.key === status);
+  const isDeliveredAll = status === "delivered";
 
   return (
     <div className="space-y-1">
@@ -97,7 +98,9 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
                 initial={false}
                 animate={{ scale: isCurrent ? 1.1 : 1 }}
                 className={`w-10 h-10 rounded-full grid place-items-center transition-colors ${
-                  isDone
+                  isDeliveredAll
+                    ? "bg-emerald-500 text-white"
+                    : isDone
                     ? step.doneBg
                     : isCurrent
                     ? `${step.currentBg} ring-4 ${step.currentRing}`
@@ -109,7 +112,11 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
               {i < STEPS.length - 1 && (
                 <div
                   className={`w-0.5 h-10 transition-colors ${
-                    isDone ? step.connector : "bg-muted"
+                    isDeliveredAll
+                      ? "bg-emerald-500"
+                      : isDone
+                      ? step.connector
+                      : "bg-muted"
                   }`}
                 />
               )}
@@ -117,18 +124,31 @@ export function OrderStepper({ status }: { status: OrderStatus }) {
             <div className="pt-2 pb-6">
               <p
                 className={`font-medium ${
-                  isPending ? "text-muted-foreground" : "text-foreground"
+                  isDeliveredAll
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : isPending
+                    ? "text-muted-foreground"
+                    : "text-foreground"
                 }`}
               >
                 {step.label}
               </p>
-              {isCurrent && (
+              {isCurrent && !isDeliveredAll && (
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className={`text-sm mt-0.5 ${step.currentText}`}
                 >
                   In progress…
+                </motion.p>
+              )}
+              {isCurrent && isDeliveredAll && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm mt-0.5 text-emerald-600 dark:text-emerald-400 font-medium"
+                >
+                  Successfully delivered ✓
                 </motion.p>
               )}
             </div>
